@@ -1,0 +1,951 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Platform</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 800px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        input, textarea, select {
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            padding: 10px 14px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+        button {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            border: none;
+            color: #ffffff;
+            background-color: #2563eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        button:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -2px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.08);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        .link-button {
+            background: none;
+            border: none;
+            color: #2563eb;
+            text-decoration: underline;
+            padding: 0;
+            font-weight: normal;
+            font-size: inherit;
+            cursor: pointer;
+        }
+        .link-button:hover {
+            color: #1d4ed8;
+        }
+        .error-message {
+            color: #dc2626;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .success-message {
+            color: #16a34a;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .profile-card {
+            background-color: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #e5e7eb;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container" class="container">
+        <!-- Content will be dynamically loaded here by JavaScript -->
+        <div id="loading" class="text-center text-gray-600">Loading application...</div>
+    </div>
+
+    <!-- Firebase SDKs from CDN -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            setDoc,
+            addDoc,
+            collection,
+            query,
+            where,
+            getDocs,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+        // Your Firebase web app's configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB1xByKoaNfo-ySmzHAjnxfh7_qYAZ6K48",
+            authDomain: "test-app-72070.firebaseapp.com",
+            projectId: "test-app-72070",
+            storageBucket: "test-app-72070.firebaseapp.com",
+            messagingSenderId: "1075807402991",
+            appId: "1:1075807402991:web:2e1481157169f6ead0941a",
+            measurementId: "G-YHEQKPSJZ2"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Ensure DOM is fully loaded before running script
+        document.addEventListener('DOMContentLoaded', () => {
+            const appContainer = document.getElementById('app-container');
+            const loadingElement = document.getElementById('loading'); // Get reference here
+            let currentUser = null;
+            let currentUserRole = null;
+            let currentUserProfile = null; // To store student profile data
+
+            // Hide the loading message once script starts executing within DOMContentLoaded
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
+
+
+            // --- Utility Functions ---
+
+            /**
+             * Displays a modal message to the user instead of alert().
+             * @param {string} message - The message to display.
+             * @param {string} type - 'success' or 'error'.
+             */
+            function showModalMessage(message, type) {
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <p class="text-lg font-semibold ${type === 'error' ? 'text-red-600' : 'text-green-600'}">${message}</p>
+                        <button id="closeModal" class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">OK</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                document.getElementById('closeModal').onclick = () => {
+                    document.body.removeChild(modal);
+                };
+            }
+
+            /**
+             * Generates a short, unique, human-readable student ID.
+             * @returns {string} - A unique student ID.
+             */
+            function generateUniqueStudentId() {
+                // Using a combination of timestamp and random number for uniqueness
+                const timestamp = Date.now().toString(36); // Convert to base 36
+                const random = Math.random().toString(36).substring(2, 8); // 6 random characters
+                return `${timestamp}-${random}`.toUpperCase();
+            }
+
+            /**
+             * Parses a multi-choice question string into a structured object.
+             * Expected format: STATEMENT: ... OPTION A: ... OPTION B: ... OPTION C: ... OPTION D: ... CORRECT OPTION: ...
+             * @param {string} mcqText - The raw text input for the MCQ.
+             * @returns {object|null} - Parsed MCQ object or null if format is invalid.
+             */
+            function parseMCQInput(mcqText) {
+                const regex = /STATEMENT:\s*(.*?)\s*OPTION A:\s*(.*?)\s*OPTION B:\s*(.*?)\s*OPTION C:\s*(.*?)\s*OPTION D:\s*(.*?)\s*CORRECT OPTION:\s*(.*)/is;
+                const match = mcqText.match(regex);
+
+                if (match && match.length === 7) {
+                    const correctOptionChar = match[6].trim().toUpperCase();
+                    if (!['A', 'B', 'C', 'D'].includes(correctOptionChar)) {
+                        return null; // Invalid correct option
+                    }
+
+                    return {
+                        statement: match[1].trim(),
+                        optionA: match[2].trim(),
+                        optionB: match[3].trim(),
+                        optionC: match[4].trim(),
+                        optionD: match[5].trim(),
+                        correctOption: correctOptionChar
+                    };
+                }
+                return null;
+            }
+
+            // --- UI Rendering Functions ---
+
+            /**
+             * Renders the login/signup form.
+             */
+            function renderAuthForm() {
+                appContainer.innerHTML = `
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-2">Welcome to Quiz Platform</h2>
+                        <p class="text-gray-600">Login or Signup to continue</p>
+                    </div>
+                    <div class="flex space-x-4 mb-6">
+                        <button id="showLogin" class="flex-1">Login</button>
+                        <button id="showSignup" class="flex-1 btn-secondary">Sign Up</button>
+                    </div>
+
+                    <form id="authForm" class="space-y-4">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="email" required placeholder="your.email@example.com">
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" id="password" required placeholder="********">
+                        </div>
+                        <div id="developerCodeField" class="hidden">
+                            <label for="developerCode" class="block text-sm font-medium text-gray-700 mb-1">Developer Code</label>
+                            <input type="text" id="developerCode" placeholder="MANDURI">
+                        </div>
+                        <div id="studentProfileFields" class="hidden space-y-4">
+                            <div>
+                                <label for="studentName" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" id="studentName" placeholder="Your Name">
+                            </div>
+                            <div>
+                                <label for="studentClass" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                                <input type="text" id="studentClass" placeholder="e.g., 10th Grade">
+                            </div>
+                            <div>
+                                <label for="studentProvince" class="block text-sm font-medium text-gray-700 mb-1">Province</label>
+                                <input type="text" id="studentProvince" placeholder="e.g., Punjab">
+                            </div>
+                            <div>
+                                <label for="studentDob" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                                <input type="date" id="studentDob">
+                            </div>
+                        </div>
+                        <button type="submit" id="submitAuthForm" class="w-full">Login</button>
+                        <p id="authMessage" class="error-message text-center"></p>
+                        <div class="text-center mt-4">
+                            <button type="button" id="toggleRole" class="link-button">Are you a Student? Click here.</button>
+                        </div>
+                    </form>
+                `;
+
+                const showLoginBtn = document.getElementById('showLogin');
+                const showSignupBtn = document.getElementById('showSignup');
+                const submitAuthForm = document.getElementById('submitAuthForm');
+                const developerCodeField = document.getElementById('developerCodeField');
+                const studentProfileFields = document.getElementById('studentProfileFields');
+                const toggleRoleBtn = document.getElementById('toggleRole');
+                const authForm = document.getElementById('authForm');
+                const authMessage = document.getElementById('authMessage');
+
+                let isLoginMode = true;
+                let isDeveloper = true; // Default to developer for initial view
+
+                function updateFormUI() {
+                    authMessage.textContent = ''; // Clear messages
+
+                    if (isLoginMode) {
+                        showLoginBtn.className = 'flex-1';
+                        showSignupBtn.className = 'flex-1 btn-secondary';
+                        submitAuthForm.textContent = 'Login';
+                        developerCodeField.classList.add('hidden');
+                        studentProfileFields.classList.add('hidden');
+                    } else { // Signup Mode
+                        showLoginBtn.className = 'flex-1 btn-secondary';
+                        showSignupBtn.className = 'flex-1';
+                        submitAuthForm.textContent = 'Sign Up';
+                        if (isDeveloper) {
+                            developerCodeField.classList.remove('hidden');
+                            studentProfileFields.classList.add('hidden');
+                            toggleRoleBtn.textContent = 'Are you a Student? Click here.';
+                        } else { // Student Signup
+                            developerCodeField.classList.add('hidden');
+                            studentProfileFields.classList.remove('hidden');
+                            toggleRoleBtn.textContent = 'Are you a Developer? Click here.';
+                        }
+                    }
+                }
+
+                showLoginBtn.onclick = () => {
+                    isLoginMode = true;
+                    updateFormUI();
+                };
+
+                showSignupBtn.onclick = () => {
+                    isLoginMode = false;
+                    updateFormUI();
+                };
+
+                toggleRoleBtn.onclick = () => {
+                    isDeveloper = !isDeveloper;
+                    updateFormUI();
+                };
+
+                updateFormUI(); // Initial UI setup
+
+                authForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    authMessage.textContent = 'Processing...';
+
+                    try {
+                        if (isLoginMode) {
+                            // Login
+                            await signInWithEmailAndPassword(auth, email, password);
+                            // onAuthStateChanged will handle redirection
+                        } else {
+                            // Signup
+                            if (isDeveloper) {
+                                const developerCode = document.getElementById('developerCode').value;
+                                if (developerCode !== 'MANDURI') {
+                                    authMessage.textContent = 'Invalid Developer Code.';
+                                    return;
+                                }
+                                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                                await setDoc(doc(db, 'users', userCredential.user.uid), {
+                                    email: email,
+                                    role: 'developer',
+                                    name: 'Developer User', // Default name for developer
+                                    createdAt: serverTimestamp()
+                                });
+                                showModalMessage('Developer account created successfully! Please login.', 'success');
+                                isLoginMode = true;
+                                updateFormUI();
+                            } else { // Student Signup
+                                const studentName = document.getElementById('studentName').value;
+                                const studentClass = document.getElementById('studentClass').value;
+                                const studentProvince = document.getElementById('studentProvince').value;
+                                const studentDob = document.getElementById('studentDob').value;
+
+                                if (!studentName || !studentClass || !studentProvince || !studentDob) {
+                                    authMessage.textContent = 'Please fill all profile fields.';
+                                    return;
+                                }
+
+                                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                                const studentId = generateUniqueStudentId();
+                                await setDoc(doc(db, 'users', userCredential.user.uid), {
+                                    email: email,
+                                    role: 'student',
+                                    name: studentName,
+                                    profile: {
+                                        class: studentClass,
+                                        province: studentProvince,
+                                        dob: studentDob,
+                                        studentId: studentId
+                                    },
+                                    createdAt: serverTimestamp()
+                                });
+                                showModalMessage(`Student account created. Your ID is: ${studentId}. Please login.`, 'success');
+                                isLoginMode = true;
+                                updateFormUI();
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Auth error:", error);
+                        authMessage.textContent = error.message;
+                        showModalMessage(`Authentication Error: ${error.message}`, 'error');
+                    }
+                };
+            }
+
+            /**
+             * Renders the developer dashboard.
+             */
+            async function renderDeveloperDashboard() {
+                appContainer.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800">Developer Dashboard</h2>
+                        <button id="logoutBtn" class="bg-red-500 hover:bg-red-600">Logout</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button id="createTestBtn" class="bg-green-600 hover:bg-green-700 py-3 rounded-md text-lg font-semibold">Create New Test</button>
+                        <button id="viewResultsBtn" class="bg-blue-600 hover:bg-blue-700 py-3 rounded-md text-lg font-semibold">View All Results & Students</button>
+                    </div>
+                    <div id="developerContent" class="mt-8">
+                        <!-- Dynamic content area for create test or view results -->
+                    </div>
+                `;
+
+                document.getElementById('logoutBtn').onclick = async () => {
+                    await signOut(auth);
+                };
+
+                document.getElementById('createTestBtn').onclick = renderCreateTestForm;
+                document.getElementById('viewResultsBtn').onclick = renderDeveloperResultsView;
+            }
+
+            /**
+             * Renders the form for developers to create a new test.
+             */
+            function renderCreateTestForm() {
+                const devContentDiv = document.getElementById('developerContent');
+                devContentDiv.innerHTML = `
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-4">Create New Test</h3>
+                    <form id="createTestForm" class="space-y-4">
+                        <div>
+                            <label for="testTitle" class="block text-sm font-medium text-gray-700 mb-1">Test Title</label>
+                            <input type="text" id="testTitle" required placeholder="e.g., General Knowledge Quiz">
+                        </div>
+                        <div>
+                            <label for="mcqInput" class="block text-sm font-medium text-gray-700 mb-1">
+                                MCQs (one per line, format: STATEMENT: ... OPTION A: ... OPTION B: ... OPTION C: ... OPTION D: ... CORRECT OPTION: A/B/C/D)
+                            </label>
+                            <textarea id="mcqInput" rows="10" class="w-full p-2 border rounded" placeholder="Example:
+STATEMENT: What is the capital of France? OPTION A: London OPTION B: Paris OPTION C: Rome OPTION D: Berlin CORRECT OPTION: B
+STATEMENT: Which planet is known as the Red Planet? OPTION A: Earth OPTION B: Mars OPTION C: Jupiter OPTION D: Venus CORRECT OPTION: B
+"></textarea>
+                        </div>
+                        <button type="submit" class="w-full">Save Test</button>
+                        <p id="createTestMessage" class="text-sm"></p>
+                    </form>
+                `;
+
+                const createTestForm = document.getElementById('createTestForm');
+                const createTestMessage = document.getElementById('createTestMessage');
+
+                createTestForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    createTestMessage.className = ''; // Clear previous message styles
+                    createTestMessage.textContent = 'Saving test...';
+
+                    const testTitle = document.getElementById('testTitle').value.trim();
+                    const mcqText = document.getElementById('mcqInput').value.trim();
+
+                    if (!testTitle || !mcqText) {
+                        createTestMessage.textContent = 'Please fill in both test title and MCQs.';
+                        createTestMessage.className = 'error-message';
+                        return;
+                    }
+
+                    const mcqLines = mcqText.split('\n').filter(line => line.trim() !== '');
+                    const questions = [];
+
+                    for (const line of mcqLines) {
+                        const parsed = parseMCQInput(line);
+                        if (parsed) {
+                            questions.push(parsed);
+                        } else {
+                            createTestMessage.textContent = `Error parsing MCQ: "${line}". Please check format.`;
+                            createTestMessage.className = 'error-message';
+                            return;
+                        }
+                    }
+
+                    if (questions.length === 0) {
+                        createTestMessage.textContent = 'No valid MCQs parsed. Please check format.';
+                        createTestMessage.className = 'error-message';
+                        return;
+                    }
+
+                    try {
+                        // 1. Add the test document
+                        const testRef = await addDoc(collection(db, 'tests'), {
+                            title: testTitle,
+                            creatorUid: currentUser.uid,
+                            createdAt: serverTimestamp(),
+                            totalQuestions: questions.length // Store total questions for easier reference
+                        });
+
+                        // 2. Add questions to the subcollection
+                        const questionsBatch = [];
+                        for (const q of questions) {
+                            questionsBatch.push(addDoc(collection(db, 'tests', testRef.id, 'questions'), q));
+                        }
+                        await Promise.all(questionsBatch); // Execute all additions concurrently
+
+                        createTestMessage.textContent = 'Test created successfully!';
+                        createTestMessage.className = 'success-message';
+                        createTestForm.reset(); // Clear the form
+                    } catch (error) {
+                        console.error("Error creating test:", error);
+                        createTestMessage.textContent = `Failed to create test: ${error.message}`;
+                        createTestMessage.className = 'error-message';
+                        showModalMessage(`Error creating test: ${error.message}`, 'error');
+                    }
+                };
+            }
+
+            /**
+             * Renders the view for developers to see all student results and profiles.
+             */
+            async function renderDeveloperResultsView() {
+                const devContentDiv = document.getElementById('developerContent');
+                devContentDiv.innerHTML = `
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-4">All Students & Test Results</h3>
+                    <div id="devResultsLoading" class="text-gray-600 mb-4">Loading data...</div>
+                    <div class="mb-6">
+                        <h4 class="text-xl font-semibold text-gray-700 mb-2">Student Profiles</h4>
+                        <div id="studentProfilesList" class="space-y-3">
+                            <p class="text-gray-500">No student profiles found.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-semibold text-gray-700 mb-2">All Test Results</h4>
+                        <div id="allTestResultsList" class="space-y-3">
+                            <p class="text-gray-500">No test results found.</p>
+                        </div>
+                    </div>
+                `;
+
+                const devResultsLoading = document.getElementById('devResultsLoading');
+                const studentProfilesList = document.getElementById('studentProfilesList');
+                const allTestResultsList = document.getElementById('allTestResultsList');
+
+                try {
+                    // Fetch all student profiles
+                    const studentsQuery = query(collection(db, 'users'), where('role', '==', 'student'));
+                    const studentSnapshot = await getDocs(studentsQuery);
+                    studentProfilesList.innerHTML = ''; // Clear initial message
+
+                    if (studentSnapshot.empty) {
+                        studentProfilesList.innerHTML = '<p class="text-gray-500">No student profiles found.</p>';
+                    } else {
+                        studentSnapshot.forEach(doc => {
+                            const studentData = doc.data();
+                            const profile = studentData.profile || {};
+                            studentProfilesList.innerHTML += `
+                                <div class="profile-card">
+                                    <p><strong class="text-gray-800">Name:</strong> ${studentData.name}</p>
+                                    <p><strong class="text-gray-800">Email:</strong> ${studentData.email}</p>
+                                    <p><strong class="text-gray-800">Student ID:</strong> ${profile.studentId || 'N/A'}</p>
+                                    <p><strong class="text-gray-800">Class:</strong> ${profile.class || 'N/A'}</p>
+                                    <p><strong class="text-gray-800">Province:</strong> ${profile.province || 'N/A'}</p>
+                                    <p><strong class="text-gray-800">DOB:</strong> ${profile.dob || 'N/A'}</p>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    // Fetch all test results
+                    const resultsQuery = query(collection(db, 'results'));
+                    const resultsSnapshot = await getDocs(resultsQuery);
+                    allTestResultsList.innerHTML = ''; // Clear initial message
+
+                    if (resultsSnapshot.empty) {
+                        allTestResultsList.innerHTML = '<p class="text-gray-500">No test results found.</p>';
+                    } else {
+                        resultsSnapshot.forEach(doc => {
+                            const resultData = doc.data();
+                            allTestResultsList.innerHTML += `
+                                <div class="profile-card">
+                                    <p><strong class="text-gray-800">Student Name:</strong> ${resultData.studentName || 'N/A'} (ID: ${resultData.studentCustomId || 'N/A'})</p>
+                                    <p><strong class="text-gray-800">Test Title:</strong> ${resultData.testTitle || 'N/A'}</p>
+                                    <p><strong class="text-gray-800">Score:</strong> ${resultData.score}/${resultData.totalQuestions}</p>
+                                    <p><strong class="text-gray-800">Date:</strong> ${resultData.timestamp ? new Date(resultData.timestamp.toDate()).toLocaleString() : 'N/A'}</p>
+                                    <!-- Optionally, show detailed answers here if needed -->
+                                </div>
+                            `;
+                        });
+                    }
+
+                } catch (error) {
+                    console.error("Error fetching developer data:", error);
+                    devContentDiv.innerHTML = `<p class="error-message">Error loading data: ${error.message}</p>`;
+                    showModalMessage(`Error loading data: ${error.message}`, 'error');
+                } finally {
+                    devResultsLoading.classList.add('hidden');
+                }
+            }
+
+            /**
+             * Renders the student dashboard.
+             */
+            async function renderStudentDashboard() {
+                appContainer.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800">Student Dashboard</h2>
+                        <button id="logoutBtn" class="bg-red-500 hover:bg-red-600">Logout</button>
+                    </div>
+                    <p class="text-gray-600 mb-4">Welcome, ${currentUserProfile ? currentUserProfile.name : 'Student'}! Your Student ID: <strong class="text-blue-600">${currentUserProfile ? currentUserProfile.profile.studentId : 'Loading...'}</strong></p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button id="testLibraryBtn" class="bg-green-600 hover:bg-green-700 py-3 rounded-md text-lg font-semibold">Test Library</button>
+                        <button id="viewPastResultsBtn" class="bg-blue-600 hover:bg-blue-700 py-3 rounded-md text-lg font-semibold">View Past Results</button>
+                    </div>
+                    <div id="studentContent" class="mt-8">
+                        <!-- Dynamic content area for test library or past results -->
+                    </div>
+                `;
+
+                document.getElementById('logoutBtn').onclick = async () => {
+                    await signOut(auth);
+                };
+
+                document.getElementById('testLibraryBtn').onclick = renderTestLibrary;
+                document.getElementById('viewPastResultsBtn').onclick = renderStudentPastResults;
+
+                // Fetch student profile immediately to display details
+                if (!currentUserProfile) {
+                    const userDocRef = doc(db, 'users', currentUser.uid);
+                    const userDocSnap = await getDoc(userDocRef);
+                    if (userDocSnap.exists()) {
+                        currentUserProfile = userDocSnap.data();
+                        document.querySelector('.text-gray-600.mb-4').innerHTML = `Welcome, ${currentUserProfile.name}! Your Student ID: <strong class="text-blue-600">${currentUserProfile.profile.studentId}</strong>`;
+                    }
+                }
+            }
+
+            /**
+             * Renders the test library for students.
+             */
+            async function renderTestLibrary() {
+                const studentContentDiv = document.getElementById('studentContent');
+                studentContentDiv.innerHTML = `
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-4">Available Tests</h3>
+                    <div id="testListLoading" class="text-gray-600 mb-4">Loading tests...</div>
+                    <div id="testList" class="space-y-3">
+                        <p class="text-gray-500">No tests available.</p>
+                    </div>
+                `;
+
+                const testListLoading = document.getElementById('testListLoading');
+                const testList = document.getElementById('testList');
+
+                try {
+                    const q = query(collection(db, 'tests'));
+                    const querySnapshot = await getDocs(q);
+
+                    testList.innerHTML = ''; // Clear loading message
+
+                    if (querySnapshot.empty) {
+                        testList.innerHTML = '<p class="text-gray-500">No tests currently available.</p>';
+                    } else {
+                        querySnapshot.forEach((doc) => {
+                            const test = doc.data();
+                            testList.innerHTML += `
+                                <div class="profile-card flex justify-between items-center">
+                                    <span class="font-semibold text-lg">${test.title}</span>
+                                    <button class="take-test-btn" data-test-id="${doc.id}" data-test-title="${test.title}">Take Test</button>
+                                </div>
+                            `;
+                        });
+                        document.querySelectorAll('.take-test-btn').forEach(button => {
+                            button.onclick = (e) => renderQuiz(e.target.dataset.testId, e.target.dataset.testTitle);
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error fetching tests:", error);
+                    testList.innerHTML = `<p class="error-message">Error loading tests: ${error.message}</p>`;
+                    showModalMessage(`Error loading tests: ${error.message}`, 'error');
+                } finally {
+                    testListLoading.classList.add('hidden');
+                }
+            }
+
+            /**
+             * Renders the quiz questions for a given test.
+             * @param {string} testId - The ID of the test to take.
+             * @param {string} testTitle - The title of the test.
+             */
+            async function renderQuiz(testId, testTitle) {
+                const studentContentDiv = document.getElementById('studentContent');
+                studentContentDiv.innerHTML = `
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-4">${testTitle} Quiz</h3>
+                    <div id="quizLoading" class="text-gray-600 mb-4">Loading questions...</div>
+                    <form id="quizForm" class="space-y-6 hidden">
+                        <!-- Questions will be dynamically inserted here -->
+                        <button type="submit" class="w-full">Submit Quiz</button>
+                        <p id="quizMessage" class="text-sm"></p>
+                    </form>
+                `;
+
+                const quizLoading = document.getElementById('quizLoading');
+                const quizForm = document.getElementById('quizForm');
+                const quizMessage = document.getElementById('quizMessage');
+                let questionsData = [];
+
+                try {
+                    const q = query(collection(db, 'tests', testId, 'questions'));
+                    const querySnapshot = await getDocs(q);
+
+                    if (querySnapshot.empty) {
+                        studentContentDiv.innerHTML = '<p class="error-message">No questions found for this test.</p>';
+                        return;
+                    }
+
+                    questionsData = [];
+                    let questionHtml = '';
+                    let qNum = 1;
+
+                    querySnapshot.forEach((doc) => {
+                        const question = doc.data();
+                        questionsData.push({ id: doc.id, ...question }); // Store question with its ID
+                        questionHtml += `
+                            <div class="profile-card">
+                                <p class="font-bold mb-2">Q${qNum}: ${question.statement}</p>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="question-${doc.id}" value="A" class="mr-2"> ${question.optionA}
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="question-${doc.id}" value="B" class="mr-2"> ${question.optionB}
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="question-${doc.id}" value="C" class="mr-2"> ${question.optionC}
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="question-${doc.id}" value="D" class="mr-2"> ${question.optionD}
+                                    </label>
+                                </div>
+                            </div>
+                        `;
+                        qNum++;
+                    });
+
+                    quizForm.querySelector('button[type="submit"]').insertAdjacentHTML('beforebegin', questionHtml);
+                    quizForm.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("Error loading quiz:", error);
+                    studentContentDiv.innerHTML = `<p class="error-message">Error loading quiz: ${error.message}</p>`;
+                    showModalMessage(`Error loading quiz: ${error.message}`, 'error');
+                } finally {
+                    quizLoading.classList.add('hidden');
+                }
+
+                quizForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    quizMessage.className = '';
+                    quizMessage.textContent = 'Submitting quiz...';
+
+                    let score = 0;
+                    const studentAnswers = [];
+
+                    questionsData.forEach(question => {
+                        const selectedOptionElement = quizForm.querySelector(`input[name="question-${question.id}"]:checked`);
+                        const selectedOption = selectedOptionElement ? selectedOptionElement.value : null;
+                        const isCorrect = selectedOption === question.correctOption;
+
+                        if (isCorrect) {
+                            score++;
+                        }
+
+                        studentAnswers.push({
+                            questionId: question.id,
+                            selectedOption: selectedOption,
+                            correctOption: question.correctOption,
+                            isCorrect: isCorrect,
+                            statement: question.statement // Denormalize for easier result review
+                        });
+                    });
+
+                    try {
+                        await addDoc(collection(db, 'results'), {
+                            studentUid: currentUser.uid,
+                            studentCustomId: currentUserProfile.profile.studentId,
+                            studentName: currentUserProfile.name, // Denormalize student name
+                            testId: testId,
+                            testTitle: testTitle,
+                            score: score,
+                            totalQuestions: questionsData.length,
+                            timestamp: serverTimestamp(),
+                            answers: studentAnswers
+                        });
+                        showModalMessage(`Quiz completed! You scored ${score} out of ${questionsData.length}.`, 'success');
+                        renderStudentDashboard(); // Go back to dashboard after submission
+                    } catch (error) {
+                        console.error("Error submitting quiz:", error);
+                        quizMessage.textContent = `Failed to submit quiz: ${error.message}`;
+                        quizMessage.className = 'error-message';
+                        showModalMessage(`Error submitting quiz: ${error.message}`, 'error');
+                    }
+                };
+            }
+
+            /**
+             * Renders the student's past results.
+             */
+            async function renderStudentPastResults() {
+                const studentContentDiv = document.getElementById('studentContent');
+                studentContentDiv.innerHTML = `
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-4">Your Past Results</h3>
+                    <div id="resultsLoading" class="text-gray-600 mb-4">Loading your results...</div>
+                    <div id="pastResultsList" class="space-y-3">
+                        <p class="text-gray-500">No past results found.</p>
+                    </div>
+                `;
+
+                const resultsLoading = document.getElementById('resultsLoading');
+                const pastResultsList = document.getElementById('pastResultsList');
+
+                try {
+                    // Query results only for the current student
+                    const q = query(collection(db, 'results'), where('studentUid', '==', currentUser.uid));
+                    const querySnapshot = await getDocs(q);
+
+                    pastResultsList.innerHTML = ''; // Clear loading message
+
+                    if (querySnapshot.empty) {
+                        pastResultsList.innerHTML = '<p class="text-gray-500">You have no past results yet.</p>';
+                    } else {
+                        querySnapshot.forEach((doc) => {
+                            const result = doc.data();
+                            const resultDate = result.timestamp ? new Date(result.timestamp.toDate()).toLocaleString() : 'N/A';
+                            let detailedAnswersHtml = '<h5 class="font-semibold mt-4 mb-2">Answer Details:</h5>';
+                            if (result.answers && result.answers.length > 0) {
+                                result.answers.forEach((ans, index) => {
+                                    const statusClass = ans.isCorrect ? 'text-green-600' : 'text-red-600';
+                                    detailedAnswersHtml += `
+                                        <p class="text-sm">Q${index + 1}: ${ans.statement}</p>
+                                        <p class="text-sm">Your Answer: ${ans.selectedOption || 'N/A'} (Correct: ${ans.correctOption}) <span class="${statusClass}">${ans.isCorrect ? '✓ Correct' : '✗ Incorrect'}</span></p>
+                                    `;
+                                });
+                            } else {
+                                detailedAnswersHtml += '<p class="text-sm text-gray-500">No detailed answers recorded.</p>';
+                            }
+
+
+                            pastResultsList.innerHTML += `
+                                <div class="profile-card">
+                                    <p><strong class="text-gray-800">Test Title:</strong> ${result.testTitle}</p>
+                                    <p><strong class="text-gray-800">Score:</strong> ${result.score}/${result.totalQuestions}</p>
+                                    <p><strong class="text-gray-800">Date:</strong> ${resultDate}</p>
+                                    <details class="mt-2">
+                                        <summary class="cursor-pointer text-blue-600 hover:underline">View Details</summary>
+                                        ${detailedAnswersHtml}
+                                    </details>
+                                </div>
+                            `;
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error fetching past results:", error);
+                    pastResultsList.innerHTML = `<p class="error-message">Error loading results: ${error.message}</p>`;
+                    showModalMessage(`Error loading results: ${error.message}`, 'error');
+                } finally {
+                    resultsLoading.classList.add('hidden');
+                }
+            }
+
+
+            // --- Authentication State Listener ---
+
+            onAuthStateChanged(auth, async (user) => {
+                // Ensure loading element is accessible
+                const currentLoadingElement = document.getElementById('loading');
+                if (currentLoadingElement && !currentLoadingElement.classList.contains('hidden')) {
+                    currentLoadingElement.classList.add('hidden'); // Hide initial loading message once auth state is checked
+                }
+
+                if (user) {
+                    currentUser = user;
+                    // Fetch user role and profile from Firestore
+                    const userDocRef = doc(db, 'users', user.uid);
+                    try {
+                        const userDocSnap = await getDoc(userDocRef);
+                        if (userDocSnap.exists()) {
+                            currentUserRole = userDocSnap.data().role;
+                            currentUserProfile = userDocSnap.data(); // Store the full profile
+                            if (currentUserRole === 'developer') {
+                                renderDeveloperDashboard();
+                            } else if (currentUserRole === 'student') {
+                                renderStudentDashboard();
+                            } else {
+                                // Should not happen if roles are strictly 'developer' or 'student'
+                                showModalMessage('Unknown user role. Please contact support.', 'error');
+                                await signOut(auth); // Log out unknown roles
+                            }
+                        } else {
+                            // User exists in Auth but no profile in Firestore (e.g., deleted manually)
+                            showModalMessage('User profile not found. Please sign up again.', 'error');
+                            await signOut(auth);
+                        }
+                    } catch (error) {
+                        console.error("Error fetching user role:", error);
+                        showModalMessage(`Failed to load user data: ${error.message}`, 'error');
+                        await signOut(auth); // Force sign out on error
+                    }
+                } else {
+                    currentUser = null;
+                    currentUserRole = null;
+                    currentUserProfile = null;
+                    renderAuthForm(); // Show login/signup if not authenticated
+                }
+            });
+        }); // End of DOMContentLoaded listener
+
+    </script>
+</body>
+</html>
